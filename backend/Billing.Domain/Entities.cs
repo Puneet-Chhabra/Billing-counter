@@ -20,7 +20,6 @@ public sealed class MenuItem
     public int CategoryId { get; set; }
     public Category? Category { get; set; }
     public decimal Price { get; set; }
-    public decimal GSTPercentage { get; set; }
     public bool IsVegetarian { get; set; } = true;
     public bool IsAvailable { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -56,7 +55,6 @@ public sealed class OrderItem
     public required string ItemName { get; set; }
     public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
-    public decimal GSTPercentage { get; set; }
     public bool IsVegetarian { get; set; } = true;
     public decimal Total { get; set; }
 }

@@ -9,9 +9,9 @@ public sealed class BillingCalculatorTests
     public void Calculates_subtotal_discount_tax_and_total()
     {
         var calculator = new BillingCalculator();
-        var item = new MenuItem { Id = 1, Name = "Burger", Price = 100, GSTPercentage = 5 };
+        var item = new MenuItem { Id = 1, Name = "Burger", Price = 100 };
 
-        var result = calculator.Calculate([(item, 2)], 20, true);
+        var result = calculator.Calculate([(item, 2)], 20, true, 5);
 
         Assert.Equal(200, result.Subtotal);
         Assert.Equal(20, result.Discount);
@@ -24,6 +24,6 @@ public sealed class BillingCalculatorTests
     {
         var calculator = new BillingCalculator();
 
-        Assert.Throws<InvalidOperationException>(() => calculator.Calculate([], 0, true));
+        Assert.Throws<InvalidOperationException>(() => calculator.Calculate([], 0, true, 5));
     }
 }

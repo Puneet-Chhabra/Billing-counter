@@ -17,7 +17,7 @@ public sealed class OrderService(BillingDbContext db, BillingCalculator calculat
         if (request.Items.Any(item => !menuItems[item.MenuItemId].IsAvailable)) throw new InvalidOperationException("One or more menu items are unavailable.");
 
         var settings = await db.BusinessSettings.SingleAsync(cancellationToken);
-        var result = calculator.Calculate(request.Items.Select(item => (menuItems[item.MenuItemId], item.Quantity)), request.Discount, settings.TaxEnabled);
+        var result = calculator.Calculate(request.Items.Select(item => (menuItems[item.MenuItemId], item.Quantity)), request.Discount, settings.TaxEnabled, settings.DefaultGSTPercentage);
         var date = DateTime.UtcNow;
         var sequence = await db.Orders.CountAsync(order => order.OrderDate.Date == date.Date, cancellationToken) + 1;
         var order = new Order
@@ -32,7 +32,7 @@ public sealed class OrderService(BillingDbContext db, BillingCalculator calculat
             CustomerPhone = request.CustomerPhone,
             CustomerEmail = request.CustomerEmail,
             CreatedBy = createdBy,
-            Items = result.Items.Select(line => new OrderItem { MenuItemId = line.MenuItemId, ItemName = line.ItemName, UnitPrice = line.UnitPrice, Quantity = line.Quantity, GSTPercentage = line.GSTPercentage, Total = line.Total, IsVegetarian = menuItems[line.MenuItemId].IsVegetarian }).ToList()
+            Items = result.Items.Select(line => new OrderItem { MenuItemId = line.MenuItemId, ItemName = line.ItemName, UnitPrice = line.UnitPrice, Quantity = line.Quantity, Total = line.Total, IsVegetarian = menuItems[line.MenuItemId].IsVegetarian }).ToList()
         };
         db.Orders.Add(order);
         await db.SaveChangesAsync(cancellationToken);
@@ -50,7 +50,7 @@ public sealed class OrderService(BillingDbContext db, BillingCalculator calculat
         if (request.Items.Any(item => !menuItems[item.MenuItemId].IsAvailable)) throw new InvalidOperationException("One or more menu items are unavailable.");
 
         var settings = await db.BusinessSettings.SingleAsync(cancellationToken);
-        var result = calculator.Calculate(request.Items.Select(item => (menuItems[item.MenuItemId], item.Quantity)), request.Discount, settings.TaxEnabled);
+        var result = calculator.Calculate(request.Items.Select(item => (menuItems[item.MenuItemId], item.Quantity)), request.Discount, settings.TaxEnabled, settings.DefaultGSTPercentage);
         order.Subtotal = result.Subtotal;
         order.Discount = result.Discount;
         order.Tax = result.Tax;
@@ -61,7 +61,7 @@ public sealed class OrderService(BillingDbContext db, BillingCalculator calculat
         order.CustomerEmail = request.CustomerEmail;
         order.UpdatedAt = DateTime.UtcNow;
         db.OrderItems.RemoveRange(order.Items);
-        order.Items = result.Items.Select(line => new OrderItem { MenuItemId = line.MenuItemId, ItemName = line.ItemName, UnitPrice = line.UnitPrice, Quantity = line.Quantity, GSTPercentage = line.GSTPercentage, Total = line.Total, IsVegetarian = menuItems[line.MenuItemId].IsVegetarian }).ToList();
+        order.Items = result.Items.Select(line => new OrderItem { MenuItemId = line.MenuItemId, ItemName = line.ItemName, UnitPrice = line.UnitPrice, Quantity = line.Quantity, Total = line.Total, IsVegetarian = menuItems[line.MenuItemId].IsVegetarian }).ToList();
         await db.SaveChangesAsync(cancellationToken);
         return order;
     }

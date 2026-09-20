@@ -31,8 +31,8 @@ public sealed class BillingDbContext(DbContextOptions<BillingDbContext> options)
         modelBuilder.Entity<OrderItem>().Property(item => item.Total).HasPrecision(18, 2);
         modelBuilder.Entity<Category>().HasData(new Category { Id = 1, Name = "Burgers" });
         modelBuilder.Entity<MenuItem>().HasData(
-            new MenuItem { Id = 1, CategoryId = 1, Name = "Classic Burger", Price = 120, GSTPercentage = 5, Description = "House beef burger" },
-            new MenuItem { Id = 2, CategoryId = 1, Name = "French Fries", Price = 80, GSTPercentage = 5, Description = "Crispy salted fries" });
+            new MenuItem { Id = 1, CategoryId = 1, Name = "Classic Burger", Price = 120, Description = "House beef burger" },
+            new MenuItem { Id = 2, CategoryId = 1, Name = "French Fries", Price = 80, Description = "Crispy salted fries" });
         modelBuilder.Entity<BusinessSettings>().HasData(new BusinessSettings { Id = 1 });
     }
 }
