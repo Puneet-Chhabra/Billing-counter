@@ -1,10 +1,12 @@
 using Billing.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Billing.Api.Controllers;
 
 [ApiController, Route("api/orders")]
+[Authorize]
 public sealed class OrdersController(BillingDbContext db, OrderService orderService) : ControllerBase
 {
     [HttpGet]

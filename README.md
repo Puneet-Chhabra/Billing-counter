@@ -12,6 +12,15 @@ dotnet run --project backend/Billing.Api/Billing.Api.csproj --urls http://localh
 
 The API creates `billing.db` on first start and seeds a Burgers category with Classic Burger and French Fries.
 
+## Local login accounts
+
+- Admin: `admin` / `admin123`
+- Billing staff: `staff` / `staff123`
+
+Change these development credentials before using the application outside a local environment. The Admin role can manage the menu; both roles can create and view orders.
+
+After authentication changes, stop any older API process and start it again so the Users table and JWT middleware are loaded.
+
 ### Frontend
 
 ```powershell

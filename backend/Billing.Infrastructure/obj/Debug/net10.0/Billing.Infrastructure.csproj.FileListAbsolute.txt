@@ -17,3 +17,4 @@ D:\code\Billing Software\backend\Billing.Infrastructure\obj\Debug\net10.0\refint
 D:\code\Billing Software\backend\Billing.Infrastructure\obj\Debug\net10.0\Billing.Infrastructure.pdb
 D:\code\Billing Software\backend\Billing.Infrastructure\obj\Debug\net10.0\Billing.Infrastructure.genruntimeconfig.cache
 D:\code\Billing Software\backend\Billing.Infrastructure\obj\Debug\net10.0\ref\Billing.Infrastructure.dll
+D:\code\Billing Software\backend\Billing.Infrastructure\obj\Debug\net10.0\Billing.Infrastructure.sourcelink.json

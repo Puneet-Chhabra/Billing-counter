@@ -69,3 +69,12 @@ D:\code\Billing Software\backend\Billing.Api\obj\Debug\net10.0\refint\Billing.Ap
 D:\code\Billing Software\backend\Billing.Api\obj\Debug\net10.0\Billing.Api.pdb
 D:\code\Billing Software\backend\Billing.Api\obj\Debug\net10.0\Billing.Api.genruntimeconfig.cache
 D:\code\Billing Software\backend\Billing.Api\obj\Debug\net10.0\ref\Billing.Api.dll
+D:\code\Billing Software\backend\Billing.Api\bin\Debug\net10.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+D:\code\Billing Software\backend\Billing.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Abstractions.dll
+D:\code\Billing Software\backend\Billing.Api\bin\Debug\net10.0\Microsoft.IdentityModel.JsonWebTokens.dll
+D:\code\Billing Software\backend\Billing.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Logging.dll
+D:\code\Billing Software\backend\Billing.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Protocols.dll
+D:\code\Billing Software\backend\Billing.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+D:\code\Billing Software\backend\Billing.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Tokens.dll
+D:\code\Billing Software\backend\Billing.Api\bin\Debug\net10.0\System.IdentityModel.Tokens.Jwt.dll
+D:\code\Billing Software\backend\Billing.Api\obj\Debug\net10.0\Billing.Api.sourcelink.json

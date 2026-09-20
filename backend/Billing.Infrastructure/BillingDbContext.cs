@@ -10,6 +10,7 @@ public sealed class BillingDbContext(DbContextOptions<BillingDbContext> options)
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<BusinessSettings> BusinessSettings => Set<BusinessSettings>();
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -18,6 +19,8 @@ public sealed class BillingDbContext(DbContextOptions<BillingDbContext> options)
         modelBuilder.Entity<OrderItem>().HasIndex(item => item.OrderId);
         modelBuilder.Entity<MenuItem>().HasIndex(item => new { item.CategoryId, item.IsAvailable });
         modelBuilder.Entity<MenuItem>().Property(item => item.Price).HasPrecision(18, 2);
+        modelBuilder.Entity<User>().HasIndex(user => user.Username).IsUnique();
+        modelBuilder.Entity<User>().Property(user => user.Username).HasMaxLength(100);
         modelBuilder.Entity<Order>().Property(order => order.Subtotal).HasPrecision(18, 2);
         modelBuilder.Entity<Order>().Property(order => order.Discount).HasPrecision(18, 2);
         modelBuilder.Entity<Order>().Property(order => order.Tax).HasPrecision(18, 2);

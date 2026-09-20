@@ -13,3 +13,4 @@ D:\code\Billing Software\backend\Billing.Application\obj\Debug\net10.0\Billing.A
 D:\code\Billing Software\backend\Billing.Application\obj\Debug\net10.0\refint\Billing.Application.dll
 D:\code\Billing Software\backend\Billing.Application\obj\Debug\net10.0\Billing.Application.pdb
 D:\code\Billing Software\backend\Billing.Application\obj\Debug\net10.0\ref\Billing.Application.dll
+D:\code\Billing Software\backend\Billing.Application\obj\Debug\net10.0\Billing.Application.sourcelink.json
