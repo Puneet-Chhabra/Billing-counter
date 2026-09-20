@@ -5,6 +5,7 @@ type MenuItem = { id: number; name: string; description: string; price: number; 
 type CartLine = MenuItem & { quantity: number }
 type Order = { id: number; orderNumber: string; orderDate: string; subtotal: number; discount: number; tax: number; grandTotal: number; paymentMethod: string; customerName?: string; customerPhone?: string; customerEmail?: string; items: { menuItemId: number; itemName: string; unitPrice: number; quantity: number; total: number; isVegetarian: boolean }[] }
 type Session = { token: string; username: string; role: string }
+type Page = 'billing' | 'history' | 'menu'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5080/api'
 const money = (value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)
@@ -19,6 +20,7 @@ function FoodMark({ vegetarian }: { vegetarian: boolean }) {
 
 function App() {
   const [session, setSession] = useState<Session | null>(() => JSON.parse(localStorage.getItem('billing-session') ?? 'null'))
+  const [page, setPage] = useState<Page>('billing')
   const [loginForm, setLoginForm] = useState({ username: 'admin', password: 'admin123' })
   const [loginError, setLoginError] = useState('')
   const [menu, setMenu] = useState<MenuItem[]>([])
@@ -55,6 +57,7 @@ function App() {
   }
 
   useEffect(() => { if (session) loadMenu().catch(() => setNotice(`Unable to load the menu. Check that the API is running at ${API}.`)) }, [session])
+  useEffect(() => { if (page === 'menu' && !showMenuManagement) setPage('billing'); if (page === 'history' && !showHistory) setPage('billing') }, [page, showMenuManagement, showHistory])
 
   const filtered = useMemo(() => menu.filter(item => `${item.name} ${item.description}`.toLowerCase().includes(search.toLowerCase())), [menu, search])
   const managedMenu = menu.filter(item => `${item.name} ${item.description}`.toLowerCase().includes(menuManagementSearch.toLowerCase()))
@@ -67,8 +70,8 @@ function App() {
     const response = await request(`${API}/orders${editingOrderId ? `/${editingOrderId}` : ''}`, { method: editingOrderId ? 'PUT' : 'POST', body: JSON.stringify({ items: cart.map(line => ({ menuItemId: line.id, quantity: line.quantity })), discount, paymentMethod: payment, customerName: customer.name || null, customerPhone: customer.phone || null, customerEmail: customer.email || null }) })
     if (response.ok) { const saved = await response.json() as Order; setNotice(`Order ${saved.orderNumber} ${editingOrderId ? 'updated' : 'saved'}.`); setCart([]); setCustomer({ name: '', phone: '', email: '' }); setEditingOrderId(null); await loadOrders() } else setNotice('Could not save this order.')
   }
-  const startNewOrder = () => { setCart([]); setDiscount(0); setPayment('UPI'); setCustomer({ name: '', phone: '', email: '' }); setSearch(''); setEditingOrderId(null); setNotice('') }
-  const openHistory = async () => { setShowHistory(true); await loadOrders() }
+  const startNewOrder = () => { setPage('billing'); setShowHistory(false); setShowMenuManagement(false); setCart([]); setDiscount(0); setPayment('UPI'); setCustomer({ name: '', phone: '', email: '' }); setSearch(''); setEditingOrderId(null); setNotice('') }
+  const openHistory = async () => { setPage('history'); setShowHistory(true); setShowMenuManagement(false); await loadOrders() }
   const openOrder = async (order: Order) => { const response = await request(`${API}/orders/${order.id}`); if (response.ok) setSelectedOrder(await response.json() as Order) }
   const editOrder = async (order: Order) => {
     const response = await request(`${API}/orders/${order.id}`)
@@ -84,17 +87,17 @@ function App() {
     setNotice(`Editing ${detail.orderNumber}.`)
   }
   const printOrder = async (order: Order) => { await openOrder(order); setTimeout(() => window.print(), 100) }
-  const openMenuManagement = () => { setShowMenuManagement(true); setShowHistory(false) }
+  const openMenuManagement = () => { setPage('menu'); setShowMenuManagement(true); setShowHistory(false) }
   const startMenuItem = (item?: MenuItem) => { setEditingMenuItem(item ?? null); setMenuForm(item ? { name: item.name, description: item.description, price: String(item.price), gstPercentage: '5', categoryId: '1', isAvailable: true, isVegetarian: item.isVegetarian } : { name: '', description: '', price: '', gstPercentage: '5', categoryId: '1', isAvailable: true, isVegetarian: true }) }
   const saveMenuItem = async (event: React.FormEvent) => { event.preventDefault(); const payload = { id: editingMenuItem?.id ?? 0, name: menuForm.name, description: menuForm.description, price: Number(menuForm.price), gstPercentage: Number(menuForm.gstPercentage), categoryId: Number(menuForm.categoryId), isAvailable: menuForm.isAvailable, isVegetarian: menuForm.isVegetarian }; const response = await request(`${API}/menu${editingMenuItem ? `/${editingMenuItem.id}` : ''}`, { method: editingMenuItem ? 'PUT' : 'POST', body: JSON.stringify(payload) }); if (response.ok) { await loadMenu(); setNotice(`${editingMenuItem ? 'Updated' : 'Added'} ${menuForm.name}.`); startMenuItem() } else setNotice('Could not save the menu item.') }
   const clearHistoryFilters = async () => { setHistorySearch(''); setHistoryFrom(currentMonthStart); setHistoryTo(todayInput); setHistoryPayment('All'); await loadOrders('', currentMonthStart, todayInput, 'All') }
   const login = async (event: React.FormEvent) => { event.preventDefault(); setLoginError(''); const response = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(loginForm) }); if (!response.ok) { setLoginError('Invalid username or password.'); return }; const nextSession = await response.json() as Session; localStorage.setItem('billing-session', JSON.stringify(nextSession)); setSession(nextSession) }
-  const logout = () => { localStorage.removeItem('billing-session'); setSession(null); setShowHistory(false); setShowMenuManagement(false) }
+  const logout = () => { localStorage.removeItem('billing-session'); setSession(null); setPage('billing'); setShowHistory(false); setShowMenuManagement(false) }
 
   if (!session) return <main className="login-shell"><form className="login-card" onSubmit={login}><span className="brand-mark"><Utensils size={18} /></span><p className="eyebrow">Counter billing</p><h1>Sign in</h1><p className="muted">Use your staff or admin account to continue.</p><label>Username<input required value={loginForm.username} onChange={event => setLoginForm({ ...loginForm, username: event.target.value })} /></label><label>Password<input required type="password" value={loginForm.password} onChange={event => setLoginForm({ ...loginForm, password: event.target.value })} /></label>{loginError && <div className="login-error">{loginError}</div>}<button className="save-button" type="submit">Sign in</button></form></main>
 
-  return <main className="shell">
-    <header className="topbar"><div className="brand"><span className="brand-mark"><Utensils size={18} /></span><div><strong>Counter</strong><small>{session.username} · {session.role}</small></div></div><div className="topbar-meta">{session.role === 'Admin' && <button className="history-link" onClick={openMenuManagement}><Settings2 size={14} /> Menu</button>}<button className="history-link" onClick={openHistory}>Order history</button><button className="history-link" onClick={logout}><LogOut size={14} /> Sign out</button><span className="status-dot" /> Register online <span className="date">20 Sep 2026</span></div></header>
+  return <main className={`shell page-${page}`}>
+    <header className="topbar"><div className="brand"><span className="brand-mark"><Utensils size={18} /></span><div><strong>Counter</strong><small>{session.username} · {session.role}</small></div></div><nav className="topbar-meta page-nav"><button className={page === 'billing' ? 'history-link active' : 'history-link'} onClick={startNewOrder}><ReceiptText size={14} /> Billing</button>{session.role === 'Admin' && <button className={page === 'menu' ? 'history-link active' : 'history-link'} onClick={openMenuManagement}><Settings2 size={14} /> Menu</button>}<button className={page === 'history' ? 'history-link active' : 'history-link'} onClick={openHistory}>Order history</button><button className="history-link" onClick={logout}><LogOut size={14} /> Sign out</button><span className="status-dot" /> Register online <span className="date">20 Sep 2026</span></nav></header>
     <section className="intro"><div><p className="eyebrow">Daily service · register 01</p><h1>{editingOrderId ? 'Update order' : 'Build an order'}</h1><p className="muted">Pick menu items, tune the quantities, and send the bill when it is ready.</p></div><button className="outline-button" onClick={startNewOrder}><ReceiptText size={16} /> New order</button></section>
     {notice && <div className="notice">{notice}</div>}
     {showHistory && <div className="history-summary"><span>{historyTotal} matching orders</span><strong>Revenue {money(historyTotalAmount)}</strong></div>}
