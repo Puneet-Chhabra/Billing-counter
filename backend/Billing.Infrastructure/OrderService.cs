@@ -38,4 +38,31 @@ public sealed class OrderService(BillingDbContext db, BillingCalculator calculat
         await db.SaveChangesAsync(cancellationToken);
         return order;
     }
+
+    public async Task<Order?> UpdateAsync(int id, CreateOrderRequest request, CancellationToken cancellationToken)
+    {
+        var order = await db.Orders.Include(existing => existing.Items).SingleOrDefaultAsync(existing => existing.Id == id, cancellationToken);
+        if (order is null) return null;
+
+        var ids = request.Items.Select(item => item.MenuItemId).Distinct().ToList();
+        var menuItems = await db.MenuItems.Where(item => ids.Contains(item.Id)).ToDictionaryAsync(item => item.Id, cancellationToken);
+        if (menuItems.Count != ids.Count) throw new KeyNotFoundException("One or more menu items do not exist.");
+        if (request.Items.Any(item => !menuItems[item.MenuItemId].IsAvailable)) throw new InvalidOperationException("One or more menu items are unavailable.");
+
+        var settings = await db.BusinessSettings.SingleAsync(cancellationToken);
+        var result = calculator.Calculate(request.Items.Select(item => (menuItems[item.MenuItemId], item.Quantity)), request.Discount, settings.TaxEnabled);
+        order.Subtotal = result.Subtotal;
+        order.Discount = result.Discount;
+        order.Tax = result.Tax;
+        order.GrandTotal = result.GrandTotal;
+        order.PaymentMethod = request.PaymentMethod;
+        order.CustomerName = request.CustomerName;
+        order.CustomerPhone = request.CustomerPhone;
+        order.CustomerEmail = request.CustomerEmail;
+        order.UpdatedAt = DateTime.UtcNow;
+        db.OrderItems.RemoveRange(order.Items);
+        order.Items = result.Items.Select(line => new OrderItem { MenuItemId = line.MenuItemId, ItemName = line.ItemName, UnitPrice = line.UnitPrice, Quantity = line.Quantity, GSTPercentage = line.GSTPercentage, Total = line.Total, IsVegetarian = menuItems[line.MenuItemId].IsVegetarian }).ToList();
+        await db.SaveChangesAsync(cancellationToken);
+        return order;
+    }
 }

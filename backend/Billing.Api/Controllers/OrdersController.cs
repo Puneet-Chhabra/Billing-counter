@@ -37,4 +37,17 @@ public sealed class OrdersController(BillingDbContext db, OrderService orderServ
         catch (KeyNotFoundException ex) { return BadRequest(ex.Message); }
         catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
     }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, CreateOrderRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Items.Count == 0 || string.IsNullOrWhiteSpace(request.PaymentMethod)) return BadRequest("Items and payment method are required.");
+        try
+        {
+            var order = await orderService.UpdateAsync(id, request, cancellationToken);
+            return order is null ? NotFound() : Ok(order);
+        }
+        catch (KeyNotFoundException ex) { return BadRequest(ex.Message); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
 }
