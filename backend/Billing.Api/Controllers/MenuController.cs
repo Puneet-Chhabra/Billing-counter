@@ -24,7 +24,7 @@ public sealed class MenuController(BillingDbContext db) : ControllerBase
     {
         var item = await db.MenuItems.FindAsync([id], cancellationToken);
         if (item is null) return NotFound();
-        item.Name = input.Name; item.Description = input.Description; item.CategoryId = input.CategoryId; item.Price = input.Price; item.GSTPercentage = input.GSTPercentage; item.IsAvailable = input.IsAvailable; item.UpdatedAt = DateTime.UtcNow;
+        item.Name = input.Name; item.Description = input.Description; item.CategoryId = input.CategoryId; item.Price = input.Price; item.GSTPercentage = input.GSTPercentage; item.IsVegetarian = input.IsVegetarian; item.IsAvailable = input.IsAvailable; item.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken); return item;
     }
 }

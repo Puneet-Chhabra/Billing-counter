@@ -21,6 +21,7 @@ public sealed class MenuItem
     public Category? Category { get; set; }
     public decimal Price { get; set; }
     public decimal GSTPercentage { get; set; }
+    public bool IsVegetarian { get; set; } = true;
     public bool IsAvailable { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -36,6 +37,9 @@ public sealed class Order
     public decimal Tax { get; set; }
     public decimal GrandTotal { get; set; }
     public required string PaymentMethod { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
+    public string? CustomerEmail { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Completed;
     public string CreatedBy { get; set; } = "system";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -53,6 +57,7 @@ public sealed class OrderItem
     public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
     public decimal GSTPercentage { get; set; }
+    public bool IsVegetarian { get; set; } = true;
     public decimal Total { get; set; }
 }
 

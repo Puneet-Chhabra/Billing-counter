@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Billing.Infrastructure;
 
 public sealed record CreateOrderLine(int MenuItemId, int Quantity);
-public sealed record CreateOrderRequest(IReadOnlyList<CreateOrderLine> Items, decimal Discount, string PaymentMethod);
+public sealed record CreateOrderRequest(IReadOnlyList<CreateOrderLine> Items, decimal Discount, string PaymentMethod, string? CustomerName, string? CustomerPhone, string? CustomerEmail);
 
 public sealed class OrderService(BillingDbContext db, BillingCalculator calculator)
 {
@@ -28,8 +28,11 @@ public sealed class OrderService(BillingDbContext db, BillingCalculator calculat
             Tax = result.Tax,
             GrandTotal = result.GrandTotal,
             PaymentMethod = request.PaymentMethod,
+            CustomerName = request.CustomerName,
+            CustomerPhone = request.CustomerPhone,
+            CustomerEmail = request.CustomerEmail,
             CreatedBy = createdBy,
-            Items = result.Items.Select(line => new OrderItem { MenuItemId = line.MenuItemId, ItemName = line.ItemName, UnitPrice = line.UnitPrice, Quantity = line.Quantity, GSTPercentage = line.GSTPercentage, Total = line.Total }).ToList()
+            Items = result.Items.Select(line => new OrderItem { MenuItemId = line.MenuItemId, ItemName = line.ItemName, UnitPrice = line.UnitPrice, Quantity = line.Quantity, GSTPercentage = line.GSTPercentage, Total = line.Total, IsVegetarian = menuItems[line.MenuItemId].IsVegetarian }).ToList()
         };
         db.Orders.Add(order);
         await db.SaveChangesAsync(cancellationToken);

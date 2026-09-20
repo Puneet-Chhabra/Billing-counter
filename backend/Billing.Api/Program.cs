@@ -29,6 +29,15 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<BillingDbContext>();
     db.Database.EnsureCreated();
+    foreach (var column in new[] { "CustomerName TEXT NULL", "CustomerPhone TEXT NULL", "CustomerEmail TEXT NULL" })
+    {
+        try { db.Database.ExecuteSqlRaw($"ALTER TABLE Orders ADD COLUMN {column};"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+    }
+    foreach (var column in new[] { "IsVegetarian INTEGER NOT NULL DEFAULT 1" })
+    {
+        try { db.Database.ExecuteSqlRaw($"ALTER TABLE MenuItems ADD COLUMN {column};"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+        try { db.Database.ExecuteSqlRaw($"ALTER TABLE OrderItems ADD COLUMN {column};"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+    }
     db.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS Users (Id INTEGER NOT NULL CONSTRAINT PK_Users PRIMARY KEY AUTOINCREMENT, Username TEXT NOT NULL, PasswordHash TEXT NOT NULL, Role TEXT NOT NULL, IsActive INTEGER NOT NULL, CreatedAt TEXT NOT NULL);");
     db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS IX_Users_Username ON Users (Username);");
     if (!db.Users.Any())
