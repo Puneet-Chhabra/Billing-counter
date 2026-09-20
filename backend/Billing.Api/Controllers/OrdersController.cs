@@ -22,8 +22,9 @@ public sealed class OrdersController(BillingDbContext db, OrderService orderServ
         if (to.HasValue) query = query.Where(order => order.OrderDate < to.Value.Date.AddDays(1));
         if (!string.IsNullOrWhiteSpace(paymentMethod) && !string.Equals(paymentMethod, "All", StringComparison.OrdinalIgnoreCase)) query = query.Where(order => order.PaymentMethod == paymentMethod);
         var total = await query.CountAsync(cancellationToken);
+        var totalAmount = await query.SumAsync(order => (decimal?)order.GrandTotal, cancellationToken) ?? 0;
         var items = await query.Skip((Math.Max(page, 1) - 1) * pageSize).Take(Math.Clamp(pageSize, 1, 100)).ToListAsync(cancellationToken);
-        return Ok(new { total, page, pageSize, items });
+        return Ok(new { total, totalAmount, page, pageSize, items });
     }
 
     [HttpGet("{id:int}")]
