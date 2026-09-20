@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/Billing.Api/Billing.Api.csproj" />
+    <Project Path="backend/Billing.Application/Billing.Application.csproj" />
+    <Project Path="backend/Billing.Domain/Billing.Domain.csproj" />
+    <Project Path="backend/Billing.Infrastructure/Billing.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/backend/tests/">
+    <Project Path="backend/tests/Billing.UnitTests/Billing.UnitTests.csproj" />
+  </Folder>
+</Solution>

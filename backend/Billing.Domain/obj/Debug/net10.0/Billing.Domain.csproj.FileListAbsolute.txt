@@ -1,0 +1,11 @@
+D:\code\Billing Software\backend\Billing.Domain\bin\Debug\net10.0\Billing.Domain.deps.json
+D:\code\Billing Software\backend\Billing.Domain\bin\Debug\net10.0\Billing.Domain.dll
+D:\code\Billing Software\backend\Billing.Domain\bin\Debug\net10.0\Billing.Domain.pdb
+D:\code\Billing Software\backend\Billing.Domain\obj\Debug\net10.0\Billing.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\code\Billing Software\backend\Billing.Domain\obj\Debug\net10.0\Billing.Domain.AssemblyInfoInputs.cache
+D:\code\Billing Software\backend\Billing.Domain\obj\Debug\net10.0\Billing.Domain.AssemblyInfo.cs
+D:\code\Billing Software\backend\Billing.Domain\obj\Debug\net10.0\Billing.Domain.csproj.CoreCompileInputs.cache
+D:\code\Billing Software\backend\Billing.Domain\obj\Debug\net10.0\Billing.Domain.dll
+D:\code\Billing Software\backend\Billing.Domain\obj\Debug\net10.0\refint\Billing.Domain.dll
+D:\code\Billing Software\backend\Billing.Domain\obj\Debug\net10.0\Billing.Domain.pdb
+D:\code\Billing Software\backend\Billing.Domain\obj\Debug\net10.0\ref\Billing.Domain.dll
