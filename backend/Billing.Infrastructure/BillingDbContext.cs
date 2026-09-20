@@ -16,6 +16,9 @@ public sealed class BillingDbContext(DbContextOptions<BillingDbContext> options)
     {
         modelBuilder.Entity<Order>().HasIndex(order => order.OrderNumber).IsUnique();
         modelBuilder.Entity<Order>().HasIndex(order => order.OrderDate);
+        modelBuilder.Entity<Order>().Property(order => order.OrderDate).HasConversion(
+            value => value.ToUniversalTime(),
+            value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
         modelBuilder.Entity<OrderItem>().HasIndex(item => item.OrderId);
         modelBuilder.Entity<MenuItem>().HasIndex(item => new { item.CategoryId, item.IsAvailable });
         modelBuilder.Entity<MenuItem>().Property(item => item.Price).HasPrecision(18, 2);

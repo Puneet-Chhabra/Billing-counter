@@ -57,22 +57,36 @@ const money = (value: number) =>
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(value);
-const dateInput = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+const istDateInput = (date: Date) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((value) => value.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
 };
 const today = new Date();
-const currentMonthStart = dateInput(
-  new Date(today.getFullYear(), today.getMonth(), 1),
-);
-const todayInput = dateInput(today);
-const headerDate = today.toLocaleDateString("en-IN", {
+const todayInput = istDateInput(today);
+const currentMonthStart = `${todayInput.slice(0, 7)}-01`;
+const headerDate = new Intl.DateTimeFormat("en-IN", {
+  timeZone: "Asia/Kolkata",
   day: "numeric",
   month: "short",
   year: "numeric",
-});
+}).format(today);
+const formatISTDateTime = (value: string) =>
+  new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(value));
 
 function FoodMark({ vegetarian }: { vegetarian: boolean }) {
   return vegetarian ? (
@@ -105,6 +119,7 @@ function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
+  const [historyCustomerName, setHistoryCustomerName] = useState("");
   const [historyFrom, setHistoryFrom] = useState(currentMonthStart);
   const [historyTo, setHistoryTo] = useState(todayInput);
   const [historyPayment, setHistoryPayment] = useState("All");
@@ -149,6 +164,7 @@ function App() {
       .then(setMenu);
   const loadOrders = (
     searchValue = historySearch,
+    customerNameValue = historyCustomerName,
     fromValue = historyFrom,
     toValue = historyTo,
     paymentValue = historyPayment,
@@ -159,6 +175,7 @@ function App() {
       pageSize: String(historyPageSize),
     });
     if (searchValue.trim()) params.set("search", searchValue.trim());
+    if (customerNameValue.trim()) params.set("customerName", customerNameValue.trim());
     if (fromValue) params.set("from", fromValue);
     if (toValue) params.set("to", toValue);
     if (paymentValue !== "All") params.set("paymentMethod", paymentValue);
@@ -254,6 +271,10 @@ function App() {
     );
   const save = async () => {
     if (!cart.length || isSaving) return;
+    if (!customer.name.trim()) {
+      setNotice("Customer name is required before saving an order.");
+      return;
+    }
     setIsSaving(true);
     try {
       const response = await request(`${API}/orders`, {
@@ -265,7 +286,7 @@ function App() {
           })),
           discount,
           paymentMethod: payment,
-          customerName: customer.name || null,
+          customerName: customer.name.trim(),
           customerPhone: customer.phone || null,
           customerEmail: customer.email || null,
         }),
@@ -302,12 +323,20 @@ function App() {
     setShowHistory(true);
     setShowMenuManagement(false);
     setHistoryPage(1);
-    await loadOrders(historySearch, historyFrom, historyTo, historyPayment, 1);
+    await loadOrders(
+      historySearch,
+      historyCustomerName,
+      historyFrom,
+      historyTo,
+      historyPayment,
+      1,
+    );
   };
   const changeHistoryPage = async (nextPage: number) => {
     setHistoryPage(nextPage);
     await loadOrders(
       historySearch,
+      historyCustomerName,
       historyFrom,
       historyTo,
       historyPayment,
@@ -378,11 +407,12 @@ function App() {
   };
   const clearHistoryFilters = async () => {
     setHistorySearch("");
+    setHistoryCustomerName("");
     setHistoryFrom(currentMonthStart);
     setHistoryTo(todayInput);
     setHistoryPayment("All");
     setHistoryPage(1);
-    await loadOrders("", currentMonthStart, todayInput, "All", 1);
+    await loadOrders("", "", currentMonthStart, todayInput, "All", 1);
   };
   const login = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -710,6 +740,20 @@ function App() {
               />
             </label>
             <label>
+              <Search size={16} />
+              <input
+                value={historyCustomerName}
+                onChange={(event) => setHistoryCustomerName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void loadOrders();
+                  }
+                }}
+                placeholder="Customer name"
+              />
+            </label>
+            <label>
               From
               <input
                 type="date"
@@ -755,7 +799,7 @@ function App() {
                   <div>
                     <strong>{order.orderNumber}</strong>
                     <span>
-                      {new Date(order.orderDate).toLocaleString()} ·{" "}
+                      {formatISTDateTime(order.orderDate)} IST ·{" "}
                       {order.paymentMethod}
                     </span>
                   </div>
@@ -938,14 +982,15 @@ function App() {
           <div className="checkout">
             <div className="customer-fields">
               <p className="eyebrow">
-                Customer details <span>(optional)</span>
+                Customer details <span>(name required)</span>
               </p>
               <input
                 value={customer.name}
                 onChange={(event) =>
                   setCustomer({ ...customer, name: event.target.value })
                 }
-                placeholder="Customer name"
+                placeholder="Customer name *"
+                required
               />
               <input
                 value={customer.phone}

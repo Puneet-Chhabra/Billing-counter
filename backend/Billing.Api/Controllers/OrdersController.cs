@@ -10,13 +10,20 @@ namespace Billing.Api.Controllers;
 public sealed class OrdersController(BillingDbContext db, OrderService orderService, Billing.Application.BillingCalculator calculator) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] string? search, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? paymentMethod, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Get([FromQuery] string? search, [FromQuery] string? customerName, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? paymentMethod, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var query = db.Orders.Include(order => order.Items).AsNoTracking().OrderByDescending(order => order.OrderDate).AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
         {
             var normalizedSearch = search.Trim().ToLower();
-            query = query.Where(order => order.OrderNumber.ToLower().Contains(normalizedSearch) || order.Items.Any(item => item.ItemName.ToLower().Contains(normalizedSearch)));
+            query = query.Where(order =>
+                order.OrderNumber.ToLower().Contains(normalizedSearch) ||
+                order.Items.Any(item => item.ItemName.ToLower().Contains(normalizedSearch)));
+        }
+        if (!string.IsNullOrWhiteSpace(customerName))
+        {
+            var normalizedCustomerName = customerName.Trim().ToLower();
+            query = query.Where(order => order.CustomerName != null && order.CustomerName.ToLower().Contains(normalizedCustomerName));
         }
         if (from.HasValue) query = query.Where(order => order.OrderDate >= from.Value.Date);
         if (to.HasValue) query = query.Where(order => order.OrderDate < to.Value.Date.AddDays(1));
@@ -33,7 +40,7 @@ public sealed class OrdersController(BillingDbContext db, OrderService orderServ
     [HttpPost]
     public async Task<IActionResult> Create(CreateOrderRequest request, CancellationToken cancellationToken)
     {
-        if (request.Items.Count == 0 || string.IsNullOrWhiteSpace(request.PaymentMethod)) return BadRequest("Items and payment method are required.");
+        if (request.Items.Count == 0 || string.IsNullOrWhiteSpace(request.PaymentMethod) || string.IsNullOrWhiteSpace(request.CustomerName)) return BadRequest("Items, payment method, and customer name are required.");
         if (!new[] { "Cash", "UPI", "Card", "Other" }.Contains(request.PaymentMethod, StringComparer.OrdinalIgnoreCase)) return BadRequest("Invalid payment method.");
         if (request.Discount < 0 || request.Items.Any(item => item.Quantity <= 0)) return BadRequest("Discount and quantities must be non-negative.");
         try { return Created("api/orders", await orderService.CreateAsync(request, User.Identity?.Name ?? "unknown", cancellationToken)); }
