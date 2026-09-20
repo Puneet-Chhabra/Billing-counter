@@ -1,0 +1,15 @@
+# .NET build output
+**/bin/
+**/obj/
+
+# Local SQLite data and journals
+*.db
+*.db-shm
+*.db-wal
+
+# Tool and runtime logs
+*.log
+
+# Frontend dependencies and build output
+**/node_modules/
+**/dist/
