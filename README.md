@@ -29,7 +29,7 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Set `VITE_API_URL` when the API uses a different URL. The default development URL is `http://localhost:5080/api`.
+Set `VITE_API_URL` when the API uses a different URL. The default development URL is `http://localhost:5000/api`.
 
 ## Verified endpoints
 

@@ -50,7 +50,7 @@ type Order = {
 type Session = { token: string; username: string; role: string };
 type Page = "billing" | "history" | "menu";
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:5080/api";
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
 const money = (value: number) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
