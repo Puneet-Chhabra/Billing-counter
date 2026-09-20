@@ -56,6 +56,7 @@ public sealed class OrderItem
     public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
     public bool IsVegetarian { get; set; } = true;
+    public decimal GSTPercentage { get; set; }
     public decimal Total { get; set; }
 }
 

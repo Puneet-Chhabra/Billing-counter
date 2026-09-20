@@ -101,6 +101,7 @@ function App() {
   const [payment, setPayment] = useState("UPI");
   const [customer, setCustomer] = useState({ name: "", phone: "", email: "" });
   const [notice, setNotice] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
@@ -252,27 +253,38 @@ function App() {
       ),
     );
   const save = async () => {
-    const response = await request(`${API}/orders`, {
-      method: "POST",
-      body: JSON.stringify({
-        items: cart.map((line) => ({
-          menuItemId: line.id,
-          quantity: line.quantity,
-        })),
-        discount,
-        paymentMethod: payment,
-        customerName: customer.name || null,
-        customerPhone: customer.phone || null,
-        customerEmail: customer.email || null,
-      }),
-    });
-    if (response.ok) {
-      const saved = (await response.json()) as Order;
-      setNotice(`Order ${saved.orderNumber} saved.`);
-      setCart([]);
-      setCustomer({ name: "", phone: "", email: "" });
-      await loadOrders();
-    } else setNotice("Could not save this order.");
+    if (!cart.length || isSaving) return;
+    setIsSaving(true);
+    try {
+      const response = await request(`${API}/orders`, {
+        method: "POST",
+        body: JSON.stringify({
+          items: cart.map((line) => ({
+            menuItemId: line.id,
+            quantity: line.quantity,
+          })),
+          discount,
+          paymentMethod: payment,
+          customerName: customer.name || null,
+          customerPhone: customer.phone || null,
+          customerEmail: customer.email || null,
+        }),
+      });
+      if (response.ok) {
+        const saved = (await response.json()) as Order;
+        setNotice(`Order ${saved.orderNumber} saved.`);
+        setCart([]);
+        setCustomer({ name: "", phone: "", email: "" });
+        await loadOrders();
+      } else {
+        const message = await response.text();
+        setNotice(message || "Could not save this order.");
+      }
+    } catch {
+      setNotice(`Could not reach the API at ${API}.`);
+    } finally {
+      setIsSaving(false);
+    }
   };
   const startNewOrder = () => {
     setPage("billing");
@@ -993,10 +1005,10 @@ function App() {
             </div>
             <button
               className="save-button"
-              disabled={!cart.length}
+              disabled={!cart.length || isSaving}
               onClick={save}
             >
-              <CirclePlus size={18} /> Save order
+              <CirclePlus size={18} /> {isSaving ? "Saving…" : "Save order"}
             </button>
           </div>
         </aside>

@@ -29,15 +29,11 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<BillingDbContext>();
     db.Database.EnsureCreated();
-    foreach (var column in new[] { "CustomerName TEXT NULL", "CustomerPhone TEXT NULL", "CustomerEmail TEXT NULL" })
-    {
-        try { db.Database.ExecuteSqlRaw($"ALTER TABLE Orders ADD COLUMN {column};"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
-    }
-    foreach (var column in new[] { "IsVegetarian INTEGER NOT NULL DEFAULT 1" })
-    {
-        try { db.Database.ExecuteSqlRaw($"ALTER TABLE MenuItems ADD COLUMN {column};"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
-        try { db.Database.ExecuteSqlRaw($"ALTER TABLE OrderItems ADD COLUMN {column};"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
-    }
+    EnsureColumn(db, "Orders", "CustomerName", "CustomerName TEXT NULL");
+    EnsureColumn(db, "Orders", "CustomerPhone", "CustomerPhone TEXT NULL");
+    EnsureColumn(db, "Orders", "CustomerEmail", "CustomerEmail TEXT NULL");
+    EnsureColumn(db, "MenuItems", "IsVegetarian", "IsVegetarian INTEGER NOT NULL DEFAULT 1");
+    EnsureColumn(db, "OrderItems", "IsVegetarian", "IsVegetarian INTEGER NOT NULL DEFAULT 1");
     db.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS Users (Id INTEGER NOT NULL CONSTRAINT PK_Users PRIMARY KEY AUTOINCREMENT, Username TEXT NOT NULL, PasswordHash TEXT NOT NULL, Role TEXT NOT NULL, IsActive INTEGER NOT NULL, CreatedAt TEXT NOT NULL);");
     db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS IX_Users_Username ON Users (Username);");
     if (!db.Users.Any())
@@ -59,3 +55,27 @@ app.MapOpenApi();
 app.MapControllers();
 
 app.Run();
+
+static void EnsureColumn(BillingDbContext db, string table, string column, string definition)
+{
+    var connection = db.Database.GetDbConnection();
+    var wasClosed = connection.State == System.Data.ConnectionState.Closed;
+    if (wasClosed) connection.Open();
+
+    try
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info(\"{table}\")";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase)) return;
+        }
+    }
+    finally
+    {
+        if (wasClosed) connection.Close();
+    }
+
+    db.Database.ExecuteSqlRaw($"ALTER TABLE \"{table}\" ADD COLUMN {definition}");
+}

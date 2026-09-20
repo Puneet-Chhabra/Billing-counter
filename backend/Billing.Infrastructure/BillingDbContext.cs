@@ -21,6 +21,7 @@ public sealed class BillingDbContext(DbContextOptions<BillingDbContext> options)
         modelBuilder.Entity<MenuItem>().Property(item => item.Price).HasPrecision(18, 2);
         modelBuilder.Entity<MenuItem>().Property(item => item.IsVegetarian).HasDefaultValue(true);
         modelBuilder.Entity<OrderItem>().Property(item => item.IsVegetarian).HasDefaultValue(true);
+        modelBuilder.Entity<OrderItem>().Property(item => item.GSTPercentage).HasPrecision(5, 2);
         modelBuilder.Entity<User>().HasIndex(user => user.Username).IsUnique();
         modelBuilder.Entity<User>().Property(user => user.Username).HasMaxLength(100);
         modelBuilder.Entity<Order>().Property(order => order.Subtotal).HasPrecision(18, 2);

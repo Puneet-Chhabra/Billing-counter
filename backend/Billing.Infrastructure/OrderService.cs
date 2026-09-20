@@ -32,7 +32,7 @@ public sealed class OrderService(BillingDbContext db, BillingCalculator calculat
             CustomerPhone = request.CustomerPhone,
             CustomerEmail = request.CustomerEmail,
             CreatedBy = createdBy,
-            Items = result.Items.Select(line => new OrderItem { MenuItemId = line.MenuItemId, ItemName = line.ItemName, UnitPrice = line.UnitPrice, Quantity = line.Quantity, Total = line.Total, IsVegetarian = menuItems[line.MenuItemId].IsVegetarian }).ToList()
+            Items = result.Items.Select(line => new OrderItem { MenuItemId = line.MenuItemId, ItemName = line.ItemName, UnitPrice = line.UnitPrice, Quantity = line.Quantity, Total = line.Total, IsVegetarian = menuItems[line.MenuItemId].IsVegetarian, GSTPercentage = settings.TaxEnabled ? settings.DefaultGSTPercentage : 0 }).ToList()
         };
         db.Orders.Add(order);
         await db.SaveChangesAsync(cancellationToken);
@@ -61,7 +61,7 @@ public sealed class OrderService(BillingDbContext db, BillingCalculator calculat
         order.CustomerEmail = request.CustomerEmail;
         order.UpdatedAt = DateTime.UtcNow;
         db.OrderItems.RemoveRange(order.Items);
-        order.Items = result.Items.Select(line => new OrderItem { MenuItemId = line.MenuItemId, ItemName = line.ItemName, UnitPrice = line.UnitPrice, Quantity = line.Quantity, Total = line.Total, IsVegetarian = menuItems[line.MenuItemId].IsVegetarian }).ToList();
+        order.Items = result.Items.Select(line => new OrderItem { MenuItemId = line.MenuItemId, ItemName = line.ItemName, UnitPrice = line.UnitPrice, Quantity = line.Quantity, Total = line.Total, IsVegetarian = menuItems[line.MenuItemId].IsVegetarian, GSTPercentage = settings.TaxEnabled ? settings.DefaultGSTPercentage : 0 }).ToList();
         await db.SaveChangesAsync(cancellationToken);
         return order;
     }
