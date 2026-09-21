@@ -6,7 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Billing.Api.Controllers;
 
+public sealed record MenuCategoryResponse(int Id, string Name);
+
 [ApiController, Route("api/menu")]
+[Authorize(Roles = "Admin,BillingStaff")]
 public sealed class MenuController(BillingDbContext db) : ControllerBase
 {
     [HttpGet]
@@ -14,6 +17,9 @@ public sealed class MenuController(BillingDbContext db) : ControllerBase
 
     [Authorize(Roles = "Admin"), HttpGet("manage")]
     public async Task<IReadOnlyList<MenuItem>> Manage(CancellationToken cancellationToken) => await db.MenuItems.Include(item => item.Category).OrderBy(item => item.Category!.Name).ThenBy(item => item.Name).ToListAsync(cancellationToken);
+
+    [Authorize(Roles = "Admin"), HttpGet("categories")]
+    public async Task<IReadOnlyList<MenuCategoryResponse>> Categories(CancellationToken cancellationToken) => await db.Categories.AsNoTracking().Where(category => category.IsActive).OrderBy(category => category.Name).Select(category => new MenuCategoryResponse(category.Id, category.Name)).ToListAsync(cancellationToken);
 
     [Authorize(Roles = "Admin"), HttpPost]
     public async Task<ActionResult<MenuItem>> Create(MenuItem item, CancellationToken cancellationToken)

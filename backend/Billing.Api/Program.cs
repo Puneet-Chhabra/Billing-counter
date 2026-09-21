@@ -11,71 +11,77 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers().AddJsonOptions(options => options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
 builder.Services.AddOpenApi();
-builder.Services.AddDbContext<BillingDbContext>(options => options.UseSqlite(builder.Configuration.GetConnectionString("Billing") ?? "Data Source=billing.db"));
+var databaseProvider = builder.Configuration["Database:Provider"] ?? "Sqlite";
+var connectionString = builder.Configuration.GetConnectionString("Billing") ?? throw new InvalidOperationException("ConnectionStrings:Billing is not configured.");
+builder.Services.AddDbContext<BillingDbContext>(options =>
+{
+    if (string.Equals(databaseProvider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+    {
+        options.UseSqlServer(connectionString, sql => sql.MigrationsAssembly("Billing.Migrations.SqlServer").EnableRetryOnFailure());
+    }
+    else if (string.Equals(databaseProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+    {
+        options.UseSqlite(connectionString);
+    }
+    else
+    {
+        throw new InvalidOperationException($"Unsupported database provider '{databaseProvider}'.");
+    }
+});
 builder.Services.AddScoped<BillingCalculator>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
-var signingKey = builder.Configuration["Authentication:SigningKey"] ?? "development-only-change-this-signing-key-2026";
+builder.Services.AddHealthChecks().AddDbContextCheck<BillingDbContext>();
+var signingKey = builder.Configuration["Authentication:SigningKey"];
+if (string.IsNullOrWhiteSpace(signingKey) || Encoding.UTF8.GetByteCount(signingKey) < 32)
+{
+    throw new InvalidOperationException("Authentication:SigningKey must be configured with at least 32 bytes.");
+}
+var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)) { KeyId = "billing-api" };
+builder.Services.AddSingleton(securityKey);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
 {
-    options.TokenValidationParameters = new TokenValidationParameters { ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)), ValidateIssuer = false, ValidateAudience = false, ValidateLifetime = true, ClockSkew = TimeSpan.FromMinutes(1) };
+    options.TokenValidationParameters = new TokenValidationParameters { ValidateIssuerSigningKey = true, IssuerSigningKey = securityKey, ValidateIssuer = false, ValidateAudience = false, ValidateLifetime = true, ClockSkew = TimeSpan.FromMinutes(1) };
 });
 builder.Services.AddAuthorization();
-builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+{
+    if (allowedOrigins.Length > 0) policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+}));
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<BillingDbContext>();
-    db.Database.EnsureCreated();
-    EnsureColumn(db, "Orders", "CustomerName", "CustomerName TEXT NULL");
-    EnsureColumn(db, "Orders", "CustomerPhone", "CustomerPhone TEXT NULL");
-    EnsureColumn(db, "Orders", "CustomerEmail", "CustomerEmail TEXT NULL");
-    EnsureColumn(db, "MenuItems", "IsVegetarian", "IsVegetarian INTEGER NOT NULL DEFAULT 1");
-    EnsureColumn(db, "OrderItems", "IsVegetarian", "IsVegetarian INTEGER NOT NULL DEFAULT 1");
-    db.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS Users (Id INTEGER NOT NULL CONSTRAINT PK_Users PRIMARY KEY AUTOINCREMENT, Username TEXT NOT NULL, PasswordHash TEXT NOT NULL, Role TEXT NOT NULL, IsActive INTEGER NOT NULL, CreatedAt TEXT NOT NULL);");
-    db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS IX_Users_Username ON Users (Username);");
-    if (!db.Users.Any())
+    db.Database.Migrate();
+    if (builder.Configuration.GetValue<bool>("Authentication:BootstrapUsersEnabled") && !db.Users.Any())
     {
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>();
-        var admin = new User { Username = "admin", PasswordHash = "pending", Role = "Admin" };
-        var staff = new User { Username = "staff", PasswordHash = "pending", Role = "BillingStaff" };
-        admin.PasswordHash = hasher.HashPassword(admin, "admin123");
-        staff.PasswordHash = hasher.HashPassword(staff, "staff123");
-        db.Users.AddRange(admin, staff);
+        foreach (var userConfiguration in builder.Configuration.GetSection("Authentication:BootstrapUsers").GetChildren())
+        {
+            var username = userConfiguration["Username"] ?? throw new InvalidOperationException("A bootstrap username is missing.");
+            var password = userConfiguration["Password"] ?? throw new InvalidOperationException($"A bootstrap password is missing for '{username}'.");
+            var role = userConfiguration["Role"] ?? throw new InvalidOperationException($"A bootstrap role is missing for '{username}'.");
+            var user = new User { Username = username, PasswordHash = "pending", Role = role };
+            user.PasswordHash = hasher.HashPassword(user, password);
+            db.Users.Add(user);
+        }
         db.SaveChanges();
     }
 }
 app.UseCors();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapOpenApi();
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
+app.MapFallbackToFile("index.html");
 
 app.Run();
 
-static void EnsureColumn(BillingDbContext db, string table, string column, string definition)
-{
-    var connection = db.Database.GetDbConnection();
-    var wasClosed = connection.State == System.Data.ConnectionState.Closed;
-    if (wasClosed) connection.Open();
-
-    try
-    {
-        using var command = connection.CreateCommand();
-        command.CommandText = $"PRAGMA table_info(\"{table}\")";
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase)) return;
-        }
-    }
-    finally
-    {
-        if (wasClosed) connection.Close();
-    }
-
-    db.Database.ExecuteSqlRaw($"ALTER TABLE \"{table}\" ADD COLUMN {definition}");
-}
+public partial class Program;

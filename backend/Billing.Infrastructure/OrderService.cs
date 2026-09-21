@@ -19,10 +19,9 @@ public sealed class OrderService(BillingDbContext db, BillingCalculator calculat
         var settings = await db.BusinessSettings.SingleAsync(cancellationToken);
         var result = calculator.Calculate(request.Items.Select(item => (menuItems[item.MenuItemId], item.Quantity)), request.Discount, settings.TaxEnabled, settings.DefaultGSTPercentage);
         var date = DateTime.UtcNow;
-        var sequence = await db.Orders.CountAsync(order => order.OrderDate.Date == date.Date, cancellationToken) + 1;
         var order = new Order
         {
-            OrderNumber = $"{settings.BillPrefix}-{date:yyyyMMdd}-{sequence:000}",
+            OrderNumber = $"{settings.BillPrefix}-{date:yyyyMMdd}-{Guid.NewGuid():N}"[..(settings.BillPrefix.Length + 19)].ToUpperInvariant(),
             Subtotal = result.Subtotal,
             Discount = result.Discount,
             Tax = result.Tax,
