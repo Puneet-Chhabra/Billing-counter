@@ -119,7 +119,15 @@ For a private package, create a separate read-only token for Azure Container App
 Generate a JWT signing key locally:
 
 ```powershell
-[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+$bytes = New-Object byte[] 48
+$generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+try {
+	$generator.GetBytes($bytes)
+	[Convert]::ToBase64String($bytes)
+}
+finally {
+	$generator.Dispose()
+}
 ```
 
 Store the output in a password manager. Do not commit it.
@@ -138,8 +146,11 @@ Also prepare strong initial passwords for:
 4. Enter `ca-billing-prod` as the app name.
 5. Create environment `cae-billing-prod` in the same region as Azure SQL.
 6. Select the **Consumption** workload profile.
-7. Use image `ghcr.io/<github-owner>/billing-counter:2026-09-21-1`.
-8. If the image is private, configure registry server `ghcr.io`, your GitHub username, and the read-only package token.
+7. For the portal's separate registry fields, enter:
+	- **Registry login server:** `ghcr.io`
+	- **Image/repository:** `<github-owner>/billing-counter` (do not include `ghcr.io/` again)
+	- **Image tag:** `2026-09-21-1`
+8. If the image is private, also configure your GitHub username and the read-only package token.
 9. Allocate **0.5 CPU** and **1 GiB memory** initially.
 10. Enable external ingress.
 11. Set ingress traffic to HTTPS only.
@@ -163,7 +174,23 @@ Use lowercase secret names. If GHCR is private, its token is also stored as a re
 
 ## 8. Configure environment variables
 
-Create a new revision and add these variables to the application container:
+Environment variables belong to the container inside a revision. They are not shown directly on the initial **Create new revision** page.
+
+In the Azure portal:
+
+1. Open `ca-billing-prod`.
+2. Select **Application > Revisions and replicas** in the left menu.
+3. Select **Create new revision**.
+4. Find the **Container image** or **Containers** section.
+5. Select the existing container named `ca-billing-prod`, or select its **Edit** button.
+6. In the container-edit panel, scroll to **Environment variables**.
+7. Select **Add** once for each variable below.
+8. For a secret-backed value, set **Source** to **Reference a secret**, then select the secret. Do not paste the secret as a manual value.
+9. Select **Save** in the container-edit panel.
+10. Before deploying, confirm the revision's ingress **Target port** is `8080`. Azure can otherwise infer or retain port `80`, while this image listens on `8080`.
+11. Select **Create** or **Deploy** on the revision page.
+
+Add these variables to the application container:
 
 | Environment variable | Source | Value |
 | --- | --- | --- |
@@ -180,6 +207,28 @@ Create a new revision and add these variables to the application container:
 | `Authentication__BootstrapUsers__1__Role` | Manual | `BillingStaff` |
 
 Double underscores are intentional. ASP.NET Core uses them for nested configuration.
+
+If the portal still does not expose the container editor, use Azure Cloud Shell or a local terminal with Azure CLI. Sign in with `az login`, then run:
+
+```powershell
+az containerapp update `
+	--name ca-billing-prod `
+	--resource-group rg-billing-prod `
+	--set-env-vars `
+		ASPNETCORE_ENVIRONMENT=Production `
+		Database__Provider=SqlServer `
+		ConnectionStrings__Billing=secretref:billing-db `
+		Authentication__SigningKey=secretref:jwt-signing-key `
+		Authentication__BootstrapUsersEnabled=true `
+		Authentication__BootstrapUsers__0__Username=<admin-username> `
+		Authentication__BootstrapUsers__0__Password=secretref:bootstrap-admin-password `
+		Authentication__BootstrapUsers__0__Role=Admin `
+		Authentication__BootstrapUsers__1__Username=<staff-username> `
+		Authentication__BootstrapUsers__1__Password=secretref:bootstrap-staff-password `
+		Authentication__BootstrapUsers__1__Role=BillingStaff
+```
+
+Replace only `<admin-username>` and `<staff-username>`. This update creates a new revision because environment variables are revision-scoped.
 
 The first successful startup will:
 
@@ -256,9 +305,10 @@ docker push ghcr.io/<github-owner>/billing-counter:<new-tag>
 
 4. In Container Apps, select **Revisions and replicas > Create new revision**.
 5. Change only the image tag unless configuration also changed.
-6. Wait for `/health` to report healthy.
-7. Test login, one menu request, and order history.
-8. Deactivate the old revision after verification.
+6. Confirm the revision's ingress **Target port** remains `8080` before deploying.
+7. Wait for `/health` to report healthy.
+8. Test login, one menu request, and order history.
+9. Deactivate the old revision after verification.
 
 Do not reuse an old tag because image caching makes deployments difficult to diagnose.
 
@@ -305,6 +355,10 @@ Azure SQL free databases include backup storage and limited point-in-time restor
 - Check SQL networking and credentials.
 - Allow enough startup-probe time for Azure SQL to resume and migrations to run.
 
+### `TargetPort 80 does not match the listening port 8080`
+
+The image listens on port `8080`, but the revision is routing traffic to port `80`. Create a new revision, set ingress **Target port** to `8080`, and deploy it. Also keep all HTTP health probes on port `8080`. The revision should change from **Activating** to **Running** after the corrected revision starts.
+
 ### `Authentication:SigningKey` startup error
 
 The `Authentication__SigningKey` secret reference is missing or resolves to fewer than 32 bytes.
@@ -312,6 +366,14 @@ The `Authentication__SigningKey` secret reference is missing or resolves to fewe
 ### SQL login or firewall error
 
 Confirm the SQL connection string, server name, administrator username, password, TLS settings, and **Allow Azure services and resources to access this server** setting.
+
+### SQL error 40613: database is not currently available
+
+The Container App reached Azure SQL, but a paused serverless/free database was still resuming. Open the database in the Azure portal and confirm its status changes from **Paused** or **Resuming** to **Online**. Opening **Query editor** and signing in also triggers a resume. The application image includes transient retries for this expected cold-start condition; restart or deploy the active revision after the database is online if its earlier retry window already expired.
+
+### `Globalization Invariant Mode is not supported`
+
+`Microsoft.Data.SqlClient` requires globalization data. The Alpine runtime image must install `icu-libs` and set `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false`. Rebuild and deploy a new immutable image tag after changing the Dockerfile; setting only an Azure environment variable does not install the required ICU package.
 
 ### Login fails after first deployment
 

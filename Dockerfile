@@ -14,8 +14,10 @@ RUN dotnet publish backend/Billing.Api/Billing.Api.csproj -c Release -o /app/pub
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 WORKDIR /app
+RUN apk add --no-cache icu-libs
 COPY --from=api-build /app/publish ./
-ENV ASPNETCORE_HTTP_PORTS=8080
+ENV ASPNETCORE_HTTP_PORTS=8080 \
+	DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 EXPOSE 8080
 USER $APP_UID
 ENTRYPOINT ["dotnet", "Billing.Api.dll"]

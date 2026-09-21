@@ -17,7 +17,9 @@ builder.Services.AddDbContext<BillingDbContext>(options =>
 {
     if (string.Equals(databaseProvider, "SqlServer", StringComparison.OrdinalIgnoreCase))
     {
-        options.UseSqlServer(connectionString, sql => sql.MigrationsAssembly("Billing.Migrations.SqlServer").EnableRetryOnFailure());
+        options.UseSqlServer(connectionString, sql => sql
+            .MigrationsAssembly("Billing.Migrations.SqlServer")
+            .EnableRetryOnFailure(12, TimeSpan.FromSeconds(10), null));
     }
     else if (string.Equals(databaseProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
     {
