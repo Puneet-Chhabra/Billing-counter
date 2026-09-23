@@ -4,6 +4,7 @@
     <Project Path="backend/Billing.Application/Billing.Application.csproj" />
     <Project Path="backend/Billing.Domain/Billing.Domain.csproj" />
     <Project Path="backend/Billing.Infrastructure/Billing.Infrastructure.csproj" />
+    <Project Path="backend/Billing.Migrations.SqlServer/Billing.Migrations.SqlServer.csproj" />
   </Folder>
   <Folder Name="/backend/tests/">
     <Project Path="backend/tests/Billing.UnitTests/Billing.UnitTests.csproj" />

@@ -14,6 +14,7 @@ public sealed class BillingDbContext(DbContextOptions<BillingDbContext> options)
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var seedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         modelBuilder.Entity<Order>().HasIndex(order => order.OrderNumber).IsUnique();
         modelBuilder.Entity<Order>().HasIndex(order => order.OrderDate);
         modelBuilder.Entity<Order>().Property(order => order.OrderDate).HasConversion(
@@ -25,6 +26,7 @@ public sealed class BillingDbContext(DbContextOptions<BillingDbContext> options)
         modelBuilder.Entity<MenuItem>().Property(item => item.IsVegetarian).HasDefaultValue(true);
         modelBuilder.Entity<OrderItem>().Property(item => item.IsVegetarian).HasDefaultValue(true);
         modelBuilder.Entity<OrderItem>().Property(item => item.GSTPercentage).HasPrecision(5, 2);
+        modelBuilder.Entity<BusinessSettings>().Property(settings => settings.DefaultGSTPercentage).HasPrecision(5, 2);
         modelBuilder.Entity<User>().HasIndex(user => user.Username).IsUnique();
         modelBuilder.Entity<User>().Property(user => user.Username).HasMaxLength(100);
         modelBuilder.Entity<Order>().Property(order => order.Subtotal).HasPrecision(18, 2);
@@ -33,10 +35,15 @@ public sealed class BillingDbContext(DbContextOptions<BillingDbContext> options)
         modelBuilder.Entity<Order>().Property(order => order.GrandTotal).HasPrecision(18, 2);
         modelBuilder.Entity<OrderItem>().Property(item => item.UnitPrice).HasPrecision(18, 2);
         modelBuilder.Entity<OrderItem>().Property(item => item.Total).HasPrecision(18, 2);
-        modelBuilder.Entity<Category>().HasData(new Category { Id = 1, Name = "Burgers" });
+        modelBuilder.Entity<Category>().HasData(
+            new Category { Id = 1, Name = "Burgers", CreatedAt = seedDate, UpdatedAt = seedDate },
+            new Category { Id = 2, Name = "Snacks", CreatedAt = seedDate, UpdatedAt = seedDate },
+            new Category { Id = 3, Name = "Beverages", CreatedAt = seedDate, UpdatedAt = seedDate },
+            new Category { Id = 4, Name = "Main Course", CreatedAt = seedDate, UpdatedAt = seedDate },
+            new Category { Id = 5, Name = "Desserts", CreatedAt = seedDate, UpdatedAt = seedDate });
         modelBuilder.Entity<MenuItem>().HasData(
-            new MenuItem { Id = 1, CategoryId = 1, Name = "Classic Burger", Price = 120, Description = "House beef burger" },
-            new MenuItem { Id = 2, CategoryId = 1, Name = "French Fries", Price = 80, Description = "Crispy salted fries" });
+            new MenuItem { Id = 1, CategoryId = 1, Name = "Classic Burger", Price = 120, Description = "House beef burger", CreatedAt = seedDate, UpdatedAt = seedDate },
+            new MenuItem { Id = 2, CategoryId = 1, Name = "French Fries", Price = 80, Description = "Crispy salted fries", CreatedAt = seedDate, UpdatedAt = seedDate });
         modelBuilder.Entity<BusinessSettings>().HasData(new BusinessSettings { Id = 1 });
     }
 }

@@ -25,6 +25,7 @@ type MenuItem = {
   isVegetarian: boolean;
   category?: { id: number; name: string };
 };
+type MenuCategory = { id: number; name: string };
 type CartLine = MenuItem & { quantity: number };
 type Order = {
   id: number;
@@ -50,7 +51,7 @@ type Order = {
 type Session = { token: string; username: string; role: string };
 type Page = "billing" | "history" | "menu";
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
+const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:5000/api" : "/api");
 const money = (value: number) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -102,11 +103,12 @@ function App() {
   );
   const [page, setPage] = useState<Page>("billing");
   const [loginForm, setLoginForm] = useState({
-    username: "admin",
-    password: "admin123",
+    username: "",
+    password: "",
   });
   const [loginError, setLoginError] = useState("");
   const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [search, setSearch] = useState("");
   const [discount, setDiscount] = useState(0);
@@ -162,6 +164,13 @@ function App() {
         return response.json();
       })
       .then(setMenu);
+  const loadCategories = () =>
+    request(`${API}/menu/categories`)
+      .then((response) => {
+        if (!response.ok) throw new Error("Category request failed");
+        return response.json();
+      })
+      .then(setCategories);
   const loadOrders = (
     searchValue = historySearch,
     customerNameValue = historyCustomerName,
@@ -189,12 +198,15 @@ function App() {
   };
 
   useEffect(() => {
-    if (session)
-      loadMenu().catch(() =>
+    if (session) {
+      const requests = [loadMenu()];
+      if (session.role === "Admin") requests.push(loadCategories());
+      Promise.all(requests).catch(() =>
         setNotice(
-          `Unable to load the menu. Check that the API is running at ${API}.`,
+          `Unable to load menu data. Check that the API is running at ${API}.`,
         ),
       );
+    }
   }, [session, page]);
   useEffect(() => {
     if (!session || !cart.length) {
@@ -375,7 +387,11 @@ function App() {
             name: "",
             description: "",
             price: "",
-            categoryId: "1",
+            categoryId: String(
+              categories.find((category) => category.name === "Burgers")?.id ??
+                categories[0]?.id ??
+                1,
+            ),
             isAvailable: true,
             isVegetarian: true,
           },
@@ -417,18 +433,22 @@ function App() {
   const login = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoginError("");
-    const response = await fetch(`${API}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(loginForm),
-    });
-    if (!response.ok) {
-      setLoginError("Invalid username or password.");
-      return;
+    try {
+      const response = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(loginForm),
+      });
+      if (!response.ok) {
+        setLoginError("Invalid username or password.");
+        return;
+      }
+      const nextSession = (await response.json()) as Session;
+      localStorage.setItem("billing-session", JSON.stringify(nextSession));
+      setSession(nextSession);
+    } catch {
+      setLoginError(`Unable to reach the API at ${API}.`);
     }
-    const nextSession = (await response.json()) as Session;
-    localStorage.setItem("billing-session", JSON.stringify(nextSession));
-    setSession(nextSession);
   };
   const logout = () => {
     localStorage.removeItem("billing-session");
@@ -618,26 +638,46 @@ function App() {
                   }
                 />
               </label>
-              <label className="food-choice">
-                <input
-                  type="radio"
-                  checked={menuForm.isVegetarian}
-                  onChange={() =>
-                    setMenuForm({ ...menuForm, isVegetarian: true })
+              <label>
+                Category
+                <select
+                  required
+                  value={menuForm.categoryId}
+                  onChange={(event) =>
+                    setMenuForm({ ...menuForm, categoryId: event.target.value })
                   }
-                />{" "}
-                <Leaf size={14} className="veg-icon" /> Vegetarian
+                >
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <label className="food-choice">
-                <input
-                  type="radio"
-                  checked={!menuForm.isVegetarian}
-                  onChange={() =>
-                    setMenuForm({ ...menuForm, isVegetarian: false })
-                  }
-                />{" "}
-                <CircleDot size={14} className="nonveg-icon" /> Non-vegetarian
-              </label>
+              <div className="food-choice-group" role="radiogroup" aria-label="Food type">
+                <label className="food-choice">
+                  <input
+                    type="radio"
+                    name="food-type"
+                    checked={menuForm.isVegetarian}
+                    onChange={() =>
+                      setMenuForm({ ...menuForm, isVegetarian: true })
+                    }
+                  />
+                  <Leaf size={14} className="veg-icon" /> Vegetarian
+                </label>
+                <label className="food-choice">
+                  <input
+                    type="radio"
+                    name="food-type"
+                    checked={!menuForm.isVegetarian}
+                    onChange={() =>
+                      setMenuForm({ ...menuForm, isVegetarian: false })
+                    }
+                  />
+                  <CircleDot size={14} className="nonveg-icon" /> Non-vegetarian
+                </label>
+              </div>
               <label className="availability">
                 <input
                   type="checkbox"

@@ -1,0 +1,67 @@
+name: Trigger auto deployment for ca-billing-prod
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/billing-web/package-lock.json
+
+      - name: Test backend
+        run: dotnet test BillingSoftware.slnx --configuration Release
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend/billing-web
+
+      - name: Lint frontend
+        run: npm run lint
+        working-directory: frontend/billing-web
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend/billing-web
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CABILLINGPROD_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.CABILLINGPROD_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CABILLINGPROD_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          dockerfilePath: Dockerfile
+          registryUrl: ghcr.io
+          registryUsername: ${{ secrets.CABILLINGPROD_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.CABILLINGPROD_REGISTRY_PASSWORD }}
+          containerAppName: ca-billing-prod
+          resourceGroup: rg-billing-prod
+          imageToBuild: ghcr.io/rishabhc1101/billing-counter:${{ github.sha }}
+
+
